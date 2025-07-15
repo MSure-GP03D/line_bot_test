@@ -1,0 +1,61 @@
+# main/views.py
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import firebase_admin
+from firebase_admin import credentials, auth
+from .models import User, ActionItem
+import json
+
+# Firebase初期化
+if not firebase_admin._apps:
+    cred = credentials.Certificate("xxx.json")
+    firebase_admin.initialize_app(cred)
+
+def index(request):
+    return render(request, 'index.html')
+
+@csrf_exempt
+def protected(request):
+    if request.method != 'GET':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return JsonResponse({"error": "No token provided"}, status=401)
+    
+    try:
+        token = auth_header.split(" ").pop()
+        decoded_token = auth.verify_id_token(token)
+        uid = decoded_token['uid']
+        email = decoded_token.get('email', '')
+        
+        # ユーザー情報を取得または作成
+        user, created = User.objects.get_or_create(
+            firebase_uid=uid,
+            defaults={'name': email.split('@')[0], 'email': email}
+        )
+        
+        return JsonResponse({
+            "message": "ログイン成功", 
+            "uid": uid,
+            "user_id": user.id,
+            "name": user.name
+        })
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=401)
+
+def action_items(request):
+    """Action Item一覧取得"""
+    items = ActionItem.objects.select_related('assigned_to').all()
+    data = []
+    for item in items:
+        data.append({
+            'id': item.id,
+            'title': item.title,
+            'description': item.description,
+            'assigned_to': item.assigned_to.name,
+            'due_date': item.due_date.strftime('%Y-%m-%d'),
+            'completed': item.completed
+        })
+    return JsonResponse({'items': data})
