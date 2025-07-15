@@ -1,4 +1,4 @@
-# main/urls.py (新規作成)
+# action_item_bot/urls.py (修正)
 from django.contrib import admin
 from django.urls import path, include
 
