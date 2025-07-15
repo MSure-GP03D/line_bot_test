@@ -1,19 +1,25 @@
-# main/views.py
+# main/views.py を以下に更新
+
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import firebase_admin
 from firebase_admin import credentials, auth
 from .models import User, ActionItem
 import json
 
+key_file = r"C:\Users\ohson\Desktop\practice\clsude_test\App_1\App_2\action_item_bot\fir-test-87458-firebase-adminsdk-fbsvc-e96539fc91.json"
+
 # Firebase初期化
 if not firebase_admin._apps:
-    cred = credentials.Certificate("xxx.json")
+    cred = credentials.Certificate(f"{key_file}")  # 既存のファイルを使用
     firebase_admin.initialize_app(cred)
 
 def index(request):
     return render(request, 'index.html')
+
+def hello(request):
+    return HttpResponse("Hello World")
 
 @csrf_exempt
 def protected(request):
@@ -25,7 +31,10 @@ def protected(request):
         return JsonResponse({"error": "No token provided"}, status=401)
     
     try:
-        token = auth_header.split(" ").pop()
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            return JsonResponse({"error": "Invalid Authorization header"}, status=401)
+        token = parts[1]
         decoded_token = auth.verify_id_token(token)
         uid = decoded_token['uid']
         email = decoded_token.get('email', '')

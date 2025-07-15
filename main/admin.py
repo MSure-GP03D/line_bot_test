@@ -1,4 +1,5 @@
-# main/admin.py
+# main/admin.py に以下の内容を追加
+
 from django.contrib import admin
 from .models import User, ActionItem
 

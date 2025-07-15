@@ -1,10 +1,9 @@
-# action_item_bot/urls.py (修正)
-from django.http import HttpResponse
 from django.urls import path
-
-def hello(request):
-    return HttpResponse("Hello World")
+from . import views
 
 urlpatterns = [
-    path('', hello, name='hello')
+    path('', views.index, name='index'),
+    path('hello/', views.hello, name='hello'),
+    path('protected/', views.protected, name='protected'),
+    path('api/action-items/', views.action_items, name='action_items'),
 ]

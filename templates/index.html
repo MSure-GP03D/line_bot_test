@@ -1,1 +1,222 @@
-<!DOCTYPE html><html><head><title>Action Item Bot</title></head><body><h1>Hello World</h1></body></html>
+<!-- templates/index.html - 動作するFlask版に合わせた修正版 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Item Bot</title>
+    <!-- Firebase v9 compat版（Flask版と同じスタイル） -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #debug-info {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Action Item Bot</h1>
+        
+        <div class="section">
+            <h3>🔐 認証</h3>
+            <div id="login-section">
+                <button id="login-btn">Googleでログイン</button>
+                <button id="test-btn">接続テスト</button>
+            </div>
+            <div id="user-section" class="hidden">
+                <p id="user-info"></p>
+                <button id="logout-btn">ログアウト</button>
+            </div>
+            <p id="auth-status">ログイン状態: 未ログイン</p>
+        </div>
+
+        <div class="section">
+            <h3>📋 Action Items</h3>
+            <div id="action-items">
+                <p>ログイン後にAction Itemsを表示します。</p>
+            </div>
+            <button id="load-items-btn" class="hidden">Action Items取得</button>
+        </div>
+
+        <div class="section">
+            <h3>🔍 デバッグ情報</h3>
+            <button onclick="clearDebug()">クリア</button>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase設定（完全版）
+         const firebaseConfig = {
+          apiKey: "AIzaSyApiM3EVSaJ_P3xjVS-UB2exXDT6lI3DRk",
+          authDomain: "fir-test-87458.firebaseapp.com",
+          projectId: "fir-test-87458",
+          storageBucket: "fir-test-87458.firebasestorage.app",
+          messagingSenderId: "562807781193",
+          appId: "1:562807781193:web:3559d480d5b371114ccc98"
+        };
+
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // デバッグ情報表示
+        function debugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            
+            console.log(`[${timestamp}] ${message}`);
+            
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+
+        function clearDebug() {
+            document.getElementById('debug-info').innerHTML = '';
+        }
+
+        // UI更新
+        function updateUI(user) {
+            const loginSection = document.getElementById('login-section');
+            const userSection = document.getElementById('user-section');
+            const authStatus = document.getElementById('auth-status');
+            const userInfo = document.getElementById('user-info');
+            const loadItemsBtn = document.getElementById('load-items-btn');
+
+            if (user) {
+                loginSection.classList.add('hidden');
+                userSection.classList.remove('hidden');
+                loadItemsBtn.classList.remove('hidden');
+                
+                authStatus.innerHTML = `<span class="success">ログイン状態: ログイン済み</span>`;
+                userInfo.innerHTML = `👤 ${user.displayName} (${user.email})`;
+                
+                debugLog(`✅ ログイン成功: ${user.email}`, 'success');
+            } else {
+                loginSection.classList.remove('hidden');
+                userSection.classList.add('hidden');
+                loadItemsBtn.classList.add('hidden');
+                
+                authStatus.innerHTML = `ログイン状態: 未ログイン`;
+                userInfo.innerHTML = '';
+                
+                debugLog('ログアウト完了');
+            }
+        }
+
+        // Googleログイン
+        document.getElementById('login-btn').onclick = async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                const result = await auth.signInWithPopup(provider);
+                alert(`ログイン成功: ${result.user.email}`);
+            } catch (error) {
+                alert(`ログイン失敗: ${error.code} - ${error.message}`);
+            }
+        };
+
+        // ログアウト
+        document.getElementById('logout-btn').onclick = () => {
+            debugLog('=== ログアウト開始 ===');
+            auth.signOut();
+        };
+
+        // 接続テスト
+        document.getElementById('test-btn').onclick = () => {
+            debugLog('=== 接続テスト開始 ===');
+            debugLog(`Firebase接続: ${firebase.apps.length > 0 ? '✅ 成功' : '❌ 失敗'}`);
+            debugLog(`Auth状態: ${auth.currentUser ? '✅ ログイン済み' : '❌ 未ログイン'}`);
+            debugLog(`プロジェクトID: ${firebaseConfig.projectId}`);
+            debugLog(`認証ドメイン: ${firebaseConfig.authDomain}`);
+        };
+
+        // Action Items取得
+        document.getElementById('load-items-btn').onclick = loadActionItems;
+
+        async function loadActionItems() {
+            debugLog('=== Action Items取得開始 ===');
+            
+            try {
+                const response = await fetch('/api/action-items/');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    debugLog(`✅ Action Items取得成功: ${data.items.length}件`, 'success');
+                    
+                    const itemsDiv = document.getElementById('action-items');
+                    if (data.items.length === 0) {
+                        itemsDiv.innerHTML = '<p>📝 Action Itemがありません。<a href="/admin/" target="_blank">管理画面</a>で追加してください。</p>';
+                    } else {
+                        let html = '<h4>📋 Action Items:</h4>';
+                        data.items.forEach((item, index) => {
+                            const status = item.completed ? '✅' : '⏰';
+                            html += `<div style="margin: 10px 0; padding: 10px; border-left: 3px solid ${item.completed ? '#4CAF50' : '#FF9800'};">`;
+                            html += `<strong>${status} ${item.title}</strong><br>`;
+                            html += `担当: ${item.assigned_to} | 期限: ${item.due_date}<br>`;
+                            if (item.description) {
+                                html += `詳細: ${item.description}`;
+                            }
+                            html += '</div>';
+                        });
+                        itemsDiv.innerHTML = html;
+                    }
+                } else {
+                    debugLog(`❌ Action Items取得エラー: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                debugLog(`❌ Action Items取得失敗: ${error.message}`, 'error');
+            }
+        }
+
+        // 認証状態の監視
+        auth.onAuthStateChanged((user) => {
+            debugLog('🔄 認証状態変更検出');
+            updateUI(user);
+        });
+
+        // ページ読み込み時
+        window.onload = function() {
+            debugLog('=== ページ読み込み完了 ===');
+            debugLog(`URL: ${window.location.href}`);
+            debugLog(`User Agent: ${navigator.userAgent}`);
+            
+            // 初期状態確認
+            setTimeout(() => {
+                debugLog('=== 初期状態確認 ===');
+                debugLog(`Firebase Apps: ${firebase.apps.length}`);
+                debugLog(`現在のユーザー: ${auth.currentUser ? auth.currentUser.email : 'なし'}`);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
