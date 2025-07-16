@@ -1,62 +1,61 @@
-<!-- templates/index.html - 動作するFlask版に合わせた修正版 -->
+<!-- templates/index.html - 完全デバッグ版 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Action Item Bot</title>
-    <!-- Firebase v9 compat版（Flask版と同じスタイル） -->
+    <title>Action Item Bot - 完全デバッグ版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-        }
-        .section {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
         .success { color: green; }
         .error { color: red; }
         .info { color: blue; }
-        button {
-            margin: 5px;
-            padding: 10px 15px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        #debug-info {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 5px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 12px;
-        }
+        .warning { color: orange; }
+        button { margin: 5px; padding: 10px 15px; font-size: 14px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; border: none; }
+        .btn-secondary { background: #6c757d; color: white; border: none; }
+        .btn-danger { background: #dc3545; color: white; border: none; }
+        #debug-info { background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 12px; }
         .hidden { display: none; }
+        .status-good { background: #d4edda; padding: 10px; border-radius: 5px; }
+        .status-bad { background: #f8d7da; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🤖 Action Item Bot</h1>
+        <h1>🤖 Action Item Bot - 完全デバッグ版</h1>
         
         <div class="section">
             <h3>🔐 認証</h3>
             <div id="login-section">
-                <button id="login-btn">Googleでログイン</button>
-                <button id="test-btn">接続テスト</button>
+                <button id="login-redirect-btn" class="btn-primary">Googleでログイン（リダイレクト）</button>
+                <button onclick="simulateFlaskAuth()" class="btn-secondary">Flask方式テスト</button>
+                <button onclick="checkCurrentUser()" class="btn-secondary">現在のユーザー確認</button>
             </div>
             <div id="user-section" class="hidden">
-                <p id="user-info"></p>
-                <button id="logout-btn">ログアウト</button>
+                <div id="user-info"></div>
+                <button onclick="getTokenInfo()" class="btn-secondary">トークン情報取得</button>
+                <button onclick="testDjangoAuth()" class="btn-primary">Django認証テスト</button>
+                <button id="logout-btn" class="btn-danger">ログアウト</button>
             </div>
-            <p id="auth-status">ログイン状態: 未ログイン</p>
+            <div id="auth-status">ログイン状態: 確認中...</div>
+        </div>
+
+        <div class="section">
+            <h3>🔧 詳細デバッグ</h3>
+            <button onclick="debugFirebaseState()" class="btn-secondary">Firebase状態詳細確認</button>
+            <button onclick="debugLocalStorage()" class="btn-secondary">ローカルストレージ確認</button>
+            <button onclick="forceRedirectAuth()" class="btn-secondary">リダイレクト認証強制再試行</button>
+            <button onclick="checkAuthPersistence()" class="btn-secondary">認証永続化設定確認</button>
+            <button onclick="testNetworkConnectivity()" class="btn-secondary">ネットワーク接続テスト</button>
+            <br>
+            <button onclick="clearPendingRedirect()" class="btn-danger">Pending Redirect クリア</button>
+            <button onclick="debugRedirectState()" class="btn-secondary">リダイレクト状態確認</button>
+            <button onclick="improvedRedirectAuth()" class="btn-primary">改良版リダイレクト認証</button>
+            <button onclick="forceManualRedirect()" class="btn-secondary">手動リダイレクト</button>
         </div>
 
         <div class="section">
@@ -64,45 +63,65 @@
             <div id="action-items">
                 <p>ログイン後にAction Itemsを表示します。</p>
             </div>
-            <button id="load-items-btn" class="hidden">Action Items取得</button>
+            <button id="load-items-btn" class="hidden btn-primary">Action Items取得</button>
         </div>
 
         <div class="section">
-            <h3>🔍 デバッグ情報</h3>
-            <button onclick="clearDebug()">クリア</button>
+            <h3>🔍 デバッグログ</h3>
+            <button onclick="clearDebug()" class="btn-secondary">ログクリア</button>
+            <button onclick="exportDebugLog()" class="btn-secondary">ログエクスポート</button>
             <div id="debug-info"></div>
         </div>
     </div>
 
     <script>
-        // Firebase設定（完全版）
-         const firebaseConfig = {
-          apiKey: "AIzaSyApiM3EVSaJ_P3xjVS-UB2exXDT6lI3DRk",
-          authDomain: "fir-test-87458.firebaseapp.com",
-          projectId: "fir-test-87458",
-          storageBucket: "fir-test-87458.firebasestorage.app",
-          messagingSenderId: "562807781193",
-          appId: "1:562807781193:web:3559d480d5b371114ccc98"
+        // Firebase設定
+        const firebaseConfig = {
+        apiKey: "AIzaSyApiM3EVSaJ_P3xjVS-UB2exXDT6lI3DRk",
+        authDomain: "fir-test-87458.firebaseapp.com",
+        projectId: "fir-test-87458",
+        storageBucket: "fir-test-87458.firebasestorage.app",
+        messagingSenderId: "562807781193",
+        appId: "1:562807781193:web:3559d480d5b371114ccc98"
         };
 
         // Firebase初期化
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
+        let debugLogHistory = [];
+
         // デバッグ情報表示
         function debugLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
-            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            const logEntry = `[${timestamp}] ${message}`;
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
             
-            console.log(`[${timestamp}] ${message}`);
+            console.log(logEntry);
+            debugLogHistory.push({ timestamp, message, type });
             
             const debugDiv = document.getElementById('debug-info');
-            debugDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            debugDiv.innerHTML += `<div class="${className}">${logEntry}</div>`;
             debugDiv.scrollTop = debugDiv.scrollHeight;
         }
 
         function clearDebug() {
             document.getElementById('debug-info').innerHTML = '';
+            debugLogHistory = [];
+        }
+
+        function exportDebugLog() {
+            const logText = debugLogHistory.map(entry => 
+                `[${entry.timestamp}] (${entry.type.toUpperCase()}) ${entry.message}`
+            ).join('\n');
+            
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `debug-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         // UI更新
@@ -118,8 +137,16 @@
                 userSection.classList.remove('hidden');
                 loadItemsBtn.classList.remove('hidden');
                 
-                authStatus.innerHTML = `<span class="success">ログイン状態: ログイン済み</span>`;
-                userInfo.innerHTML = `👤 ${user.displayName} (${user.email})`;
+                authStatus.innerHTML = `<div class="status-good"><strong>✅ ログイン状態: ログイン済み</strong></div>`;
+                userInfo.innerHTML = `
+                    <div class="status-good">
+                        👤 <strong>${user.displayName || '名前なし'}</strong><br>
+                        📧 ${user.email}<br>
+                        🆔 ${user.uid}<br>
+                        ⏰ 最終ログイン: ${user.metadata.lastSignInTime}<br>
+                        🔗 プロバイダー: ${user.providerData.map(p => p.providerId).join(', ')}
+                    </div>
+                `;
                 
                 debugLog(`✅ ログイン成功: ${user.email}`, 'success');
             } else {
@@ -127,37 +154,514 @@
                 userSection.classList.add('hidden');
                 loadItemsBtn.classList.add('hidden');
                 
-                authStatus.innerHTML = `ログイン状態: 未ログイン`;
+                authStatus.innerHTML = `<div class="status-bad"><strong>❌ ログイン状態: 未ログイン</strong></div>`;
                 userInfo.innerHTML = '';
                 
-                debugLog('ログアウト完了');
+                debugLog('❌ 未ログイン状態');
             }
         }
 
-        // Googleログイン
-        document.getElementById('login-btn').onclick = async () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
+        // Firebase状態詳細確認
+        function debugFirebaseState() {
+            debugLog('=== Firebase状態詳細確認 ===');
+            
             try {
-                const result = await auth.signInWithPopup(provider);
-                alert(`ログイン成功: ${result.user.email}`);
+                // Firebase アプリ情報
+                const app = firebase.app();
+                debugLog(`✅ Firebase アプリ名: ${app.name}`, 'success');
+                debugLog(`✅ Firebase プロジェクトID: ${app.options.projectId}`, 'success');
+                debugLog(`✅ Firebase authDomain: ${app.options.authDomain}`, 'success');
+                
+                // Auth インスタンス情報
+                debugLog(`Auth インスタンス: ${auth ? '✅ 存在' : '❌ 不存在'}`);
+                debugLog(`現在のユーザー: ${auth.currentUser ? '✅ ' + auth.currentUser.email : '❌ なし'}`);
+                
+                // Auth状態詳細
+                if (auth.currentUser) {
+                    const user = auth.currentUser;
+                    debugLog(`ユーザーUID: ${user.uid}`);
+                    debugLog(`ユーザー名: ${user.displayName || 'なし'}`);
+                    debugLog(`メール認証済み: ${user.emailVerified ? 'はい' : 'いいえ'}`);
+                    debugLog(`作成日時: ${user.metadata.creationTime}`);
+                    debugLog(`最終ログイン: ${user.metadata.lastSignInTime}`);
+                }
+                
+                // リダイレクト結果の再確認
+                debugLog('🔄 リダイレクト結果の再確認中...');
+                auth.getRedirectResult()
+                    .then((result) => {
+                        if (result && result.user) {
+                            debugLog(`✅ 再確認結果: ${result.user.email}`, 'success');
+                            debugLog(`認証方法: ${result.credential ? result.credential.providerId : 'Unknown'}`);
+                        } else {
+                            debugLog('ℹ️ 再確認結果: 新規認証なし');
+                        }
+                    })
+                    .catch((error) => {
+                        debugLog(`❌ 再確認エラー: ${error.message}`, 'error');
+                    });
+                    
             } catch (error) {
-                alert(`ログイン失敗: ${error.code} - ${error.message}`);
+                debugLog(`❌ Firebase状態確認エラー: ${error.message}`, 'error');
             }
-        };
+        }
+
+        // ローカルストレージ確認
+        function debugLocalStorage() {
+            debugLog('=== ローカルストレージ確認 ===');
+            
+            try {
+                // Firebase関連のローカルストレージを確認
+                const keys = Object.keys(localStorage);
+                const firebaseKeys = keys.filter(key => 
+                    key.includes('firebase') || 
+                    key.includes('auth') || 
+                    key.includes('user') ||
+                    key.includes('gapi') ||
+                    key.includes('google')
+                );
+                
+                debugLog(`ローカルストレージキー総数: ${keys.length}`);
+                debugLog(`Firebase/Auth関連キー数: ${firebaseKeys.length}`);
+                
+                if (firebaseKeys.length > 0) {
+                    debugLog('🔍 Firebase関連キー:', 'info');
+                    firebaseKeys.forEach(key => {
+                        const value = localStorage.getItem(key);
+                        debugLog(`  📦 ${key}: ${value ? `${value.substring(0, 50)}...` : 'null'}`);
+                    });
+                } else {
+                    debugLog('⚠️ Firebase関連のデータがローカルストレージにありません', 'warning');
+                }
+                
+                // セッションストレージも確認
+                const sessionKeys = Object.keys(sessionStorage);
+                const firebaseSessionKeys = sessionKeys.filter(key => 
+                    key.includes('firebase') || 
+                    key.includes('auth') ||
+                    key.includes('google')
+                );
+                
+                debugLog(`セッションストレージ Firebase関連キー数: ${firebaseSessionKeys.length}`);
+                
+                if (firebaseSessionKeys.length > 0) {
+                    firebaseSessionKeys.forEach(key => {
+                        const value = sessionStorage.getItem(key);
+                        debugLog(`  📦 Session ${key}: ${value ? `${value.substring(0, 30)}...` : 'null'}`);
+                    });
+                }
+                
+            } catch (error) {
+                debugLog(`❌ ローカルストレージ確認エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 現在のユーザー確認
+        function checkCurrentUser() {
+            debugLog('=== 現在のユーザー確認 ===');
+            
+            const user = auth.currentUser;
+            if (user) {
+                debugLog(`✅ ログイン済みユーザー検出:`, 'success');
+                debugLog(`  - 名前: ${user.displayName || 'なし'}`);
+                debugLog(`  - メール: ${user.email}`);
+                debugLog(`  - UID: ${user.uid}`);
+                debugLog(`  - 認証プロバイダー: ${user.providerData.map(p => p.providerId).join(', ')}`);
+                debugLog(`  - メール認証: ${user.emailVerified ? '済み' : '未済み'}`);
+                debugLog(`  - 作成日: ${user.metadata.creationTime}`);
+                debugLog(`  - 最終ログイン: ${user.metadata.lastSignInTime}`);
+                updateUI(user);
+            } else {
+                debugLog('❌ ログインユーザーなし', 'error');
+                updateUI(null);
+            }
+        }
+
+        // トークン情報取得
+        async function getTokenInfo() {
+            debugLog('=== トークン情報取得開始 ===');
+            
+            const user = auth.currentUser;
+            if (!user) {
+                debugLog('❌ ログインユーザーがいません', 'error');
+                return null;
+            }
+
+            try {
+                debugLog('🔄 IDトークン取得中...');
+                const idToken = await user.getIdToken(true); // forceRefresh = true
+                
+                debugLog('✅ IDトークン取得成功', 'success');
+                debugLog(`トークン長: ${idToken.length} 文字`);
+                debugLog(`トークン開始: ${idToken.substring(0, 50)}...`);
+                debugLog(`トークン終了: ...${idToken.substring(idToken.length - 20)}`);
+                
+                // トークンの有効期限を表示
+                try {
+                    const tokenParts = idToken.split('.');
+                    const payload = JSON.parse(atob(tokenParts[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    const iat = new Date(payload.iat * 1000);
+                    debugLog(`🕐 トークン発行時刻: ${iat.toLocaleString()}`);
+                    debugLog(`⏰ トークン有効期限: ${exp.toLocaleString()}`);
+                    debugLog(`🏢 発行者: ${payload.iss}`);
+                    debugLog(`🎯 対象者: ${payload.aud}`);
+                    debugLog(`👤 ユーザーID: ${payload.sub}`);
+                } catch (parseError) {
+                    debugLog(`⚠️ トークン解析エラー: ${parseError.message}`, 'warning');
+                }
+                
+                return idToken;
+                
+            } catch (error) {
+                debugLog(`❌ トークン取得エラー: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Django認証テスト
+        async function testDjangoAuth() {
+            debugLog('=== Django認証テスト開始 ===');
+            
+            const idToken = await getTokenInfo();
+            if (!idToken) {
+                debugLog('❌ トークンが取得できないため中断', 'error');
+                return;
+            }
+
+            try {
+                debugLog('📤 Django APIリクエスト送信中...');
+                debugLog(`📍 リクエストURL: ${window.location.origin}/protected/`);
+                debugLog(`🔑 Authorization: Bearer ${idToken.substring(0, 20)}...`);
+                
+                const response = await fetch('/protected/', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + idToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                debugLog(`📥 Django APIレスポンス: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    debugLog('✅ Django認証成功!', 'success');
+                    debugLog(`🎉 Django応答: ${JSON.stringify(data, null, 2)}`);
+                    
+                    // Action Items自動取得
+                    setTimeout(() => {
+                        loadActionItems();
+                    }, 1000);
+                } else {
+                    const errorData = await response.json();
+                    debugLog(`❌ Django認証失敗: ${JSON.stringify(errorData)}`, 'error');
+                }
+                
+            } catch (error) {
+                debugLog(`❌ Django API通信エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // Pending Redirect状態をクリア
+        function clearPendingRedirect() {
+            debugLog('=== Pending Redirect クリア開始 ===');
+            
+            try {
+                // セッションストレージからpendingRedirect関連を削除
+                const keysToRemove = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    if (key && key.includes('firebase:pendingRedirect')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => {
+                    sessionStorage.removeItem(key);
+                    debugLog(`🗑️ 削除: ${key}`);
+                });
+                
+                // ローカルストレージからも念のため削除
+                const localKeysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes('firebase:pendingRedirect')) {
+                        localKeysToRemove.push(key);
+                    }
+                }
+                
+                localKeysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    debugLog(`🗑️ ローカル削除: ${key}`);
+                });
+                
+                debugLog('✅ Pending Redirect クリア完了', 'success');
+                debugLog('💡 ページをリロードしてリダイレクト認証を再試行してください', 'info');
+                
+            } catch (error) {
+                debugLog(`❌ Pending Redirect クリアエラー: ${error.message}`, 'error');
+            }
+        }
+
+        // リダイレクト状態の詳細確認
+        function debugRedirectState() {
+            debugLog('=== リダイレクト状態詳細確認 ===');
+            
+            try {
+                // pendingRedirect関連の詳細確認
+                const pendingRedirectKeys = [];
+                
+                // セッションストレージ確認
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    if (key && key.includes('pendingRedirect')) {
+                        const value = sessionStorage.getItem(key);
+                        pendingRedirectKeys.push({key, value, storage: 'session'});
+                    }
+                }
+                
+                // ローカルストレージ確認
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.includes('pendingRedirect')) {
+                        const value = localStorage.getItem(key);
+                        pendingRedirectKeys.push({key, value, storage: 'local'});
+                    }
+                }
+                
+                if (pendingRedirectKeys.length > 0) {
+                    debugLog(`⚠️ Pending Redirect状態を検出: ${pendingRedirectKeys.length}件`, 'warning');
+                    pendingRedirectKeys.forEach(item => {
+                        debugLog(`  📦 [${item.storage}] ${item.key}: ${item.value}`);
+                    });
+                    debugLog('💡 これがリダイレクト認証の問題の原因の可能性があります', 'warning');
+                } else {
+                    debugLog('✅ Pending Redirect状態なし', 'success');
+                }
+                
+                // ブラウザのリダイレクト制限確認
+                debugLog('🔍 ブラウザリダイレクト制限確認...');
+                try {
+                    // テスト用のリダイレクト実行（実際にはリダイレクトしない）
+                    const testUrl = 'https://accounts.google.com/o/oauth2/v2/auth?test=true';
+                    debugLog(`テストURL: ${testUrl}`);
+                    debugLog('💡 ブラウザのセキュリティ設定やアドブロッカーがリダイレクトを妨げている可能性があります');
+                } catch (redirectError) {
+                    debugLog(`リダイレクトテストエラー: ${redirectError.message}`, 'error');
+                }
+                
+            } catch (error) {
+                debugLog(`❌ リダイレクト状態確認エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 強制的なリダイレクト認証（直接URLでのリダイレクト）
+        function forceManualRedirect() {
+            debugLog('=== 強制手動リダイレクト ===');
+            
+            try {
+                // Google OAuth URLを手動で構築
+                const clientId = "562807781193-e56rginda0pqnaebqup1moasoj7d6n2q.apps.googleusercontent.com"; // 仮の値、実際はOAuth Client IDが必要
+                const redirectUri = encodeURIComponent(window.location.origin);
+                const scope = encodeURIComponent('openid email profile');
+                const responseType = 'code';
+                
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                    `client_id=${clientId}&` +
+                    `redirect_uri=${redirectUri}&` +
+                    `scope=${scope}&` +
+                    `response_type=${responseType}&` +
+                    `state=${Date.now()}`;
+                
+                debugLog('🚀 手動でGoogle認証URLにリダイレクトします...');
+                debugLog(`認証URL: ${authUrl.substring(0, 100)}...`);
+                
+                // 警告表示
+                if (confirm('手動でGoogle認証ページに移動します。よろしいですか？')) {
+                    window.location.href = authUrl;
+                }
+                
+            } catch (error) {
+                debugLog(`❌ 手動リダイレクトエラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 改良されたリダイレクト認証（エラーハンドリング強化）
+        async function improvedRedirectAuth() {
+            debugLog('=== 改良版リダイレクト認証 ===');
+            
+            try {
+                // まず既存のpending stateをクリア
+                clearPendingRedirect();
+                
+                // 少し待ってからリダイレクト認証を実行
+                setTimeout(async () => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    provider.addScope('email');
+                    provider.addScope('profile');
+                    
+                    // カスタムパラメータを追加（デバッグ用）
+                    provider.setCustomParameters({
+                        'prompt': 'select_account'
+                    });
+                    
+                    debugLog('🚀 改良版リダイレクト認証開始...');
+                    debugLog('💡 認証後、このページに戻ってきます');
+                    
+                    try {
+                        await auth.signInWithRedirect(provider);
+                        debugLog('✅ リダイレクト認証コマンド送信完了', 'success');
+                    } catch (redirectError) {
+                        debugLog(`❌ リダイレクト認証コマンドエラー: ${redirectError.message}`, 'error');
+                        
+                        // フォールバック: ポップアップ認証を試行
+                        debugLog('🔄 フォールバック: ポップアップ認証を試行...');
+                        try {
+                            const result = await auth.signInWithPopup(provider);
+                            debugLog('✅ フォールバック認証成功!', 'success');
+                            debugLog(`👤 ユーザー: ${result.user.email}`);
+                        } catch (popupError) {
+                            debugLog(`❌ フォールバック認証失敗: ${popupError.message}`, 'error');
+                        }
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                debugLog(`❌ 改良版リダイレクト認証エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // Flask方式でのポップアップテスト
+        function simulateFlaskAuth() {
+            debugLog('=== Flask方式認証テスト ===');
+            
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            
+            debugLog('🔄 ポップアップ認証実行中...');
+            
+            // Flask版と同じシンプルな方式
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    debugLog('✅ Flask方式認証成功!', 'success');
+                    debugLog(`👤 ユーザー: ${result.user.email}`);
+                    debugLog(`🔗 プロバイダー: ${result.credential ? result.credential.providerId : 'Unknown'}`);
+                    
+                    // IDトークン取得
+                    return result.user.getIdToken();
+                })
+                .then((idToken) => {
+                    debugLog('✅ IDトークン取得成功', 'success');
+                    debugLog(`🎫 トークン長: ${idToken.length}`);
+                    
+                    // Django API テスト
+                    return fetch('/protected/', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + idToken
+                        }
+                    });
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        debugLog(`❌ Django API エラー: ${data.error}`, 'error');
+                    } else {
+                        debugLog('✅ Django API 成功!', 'success');
+                        debugLog(`🎉 応答: ${JSON.stringify(data)}`);
+                    }
+                })
+                .catch((error) => {
+                    debugLog(`❌ Flask方式テストエラー: ${error.code || error.message}`, 'error');
+                    
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        debugLog('💡 ポップアップ問題が再現されました - クロスオリジン制限が原因');
+                    } else if (error.code === 'auth/popup-blocked') {
+                        debugLog('💡 ポップアップがブロックされました - ブラウザ設定を確認してください');
+                    }
+                });
+        }
+
+        // リダイレクト認証の強制再試行
+        function forceRedirectAuth() {
+            debugLog('=== リダイレクト認証強制再試行 ===');
+            
+            // 現在の認証状態をクリア
+            debugLog('🔄 既存認証状態をクリア中...');
+            auth.signOut().then(() => {
+                debugLog('✅ 既存認証状態をクリア');
+                
+                // 少し待ってからリダイレクト認証
+                setTimeout(() => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    provider.addScope('email');
+                    provider.addScope('profile');
+                    
+                    debugLog('🚀 リダイレクト認証を再実行します...');
+                    debugLog('💡 Google認証画面に移動します。認証完了後、このページに戻ってきます。');
+                    
+                    auth.signInWithRedirect(provider)
+                        .catch((error) => {
+                            debugLog(`❌ リダイレクト認証開始エラー: ${error.message}`, 'error');
+                        });
+                }, 1000);
+            });
+        }
+
+        // Firebase認証の永続化設定確認
+        function checkAuthPersistence() {
+            debugLog('=== 認証永続化設定確認 ===');
+            
+            // デフォルトの永続化設定を確認
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    debugLog('✅ 認証永続化設定: LOCAL (ブラウザ終了後も保持)', 'success');
+                })
+                .catch((error) => {
+                    debugLog(`❌ 認証永続化設定エラー: ${error.message}`, 'error');
+                });
+        }
+
+        // ネットワーク接続テスト
+        async function testNetworkConnectivity() {
+            debugLog('=== ネットワーク接続テスト ===');
+            
+            try {
+                // Google APIs接続テスト
+                debugLog('🔄 Google APIs接続テスト中...');
+                const googleResponse = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=test', { mode: 'no-cors' });
+                debugLog('✅ Google APIs到達可能', 'success');
+                
+                // Firebase APIs接続テスト
+                debugLog('🔄 Firebase APIs接続テスト中...');
+                const firebaseResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: 'test' })
+                });
+                debugLog(`Firebase APIs応答: ${firebaseResponse.status}`, firebaseResponse.status < 500 ? 'success' : 'error');
+                
+                // Django API接続テスト
+                debugLog('🔄 Django API接続テスト中...');
+                const djangoResponse = await fetch('/api/action-items/');
+                debugLog(`Django API応答: ${djangoResponse.status}`, djangoResponse.ok ? 'success' : 'warning');
+                
+            } catch (error) {
+                debugLog(`❌ ネットワーク接続エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // リダイレクト認証
+        document.getElementById('login-redirect-btn').onclick = improvedRedirectAuth;
 
         // ログアウト
         document.getElementById('logout-btn').onclick = () => {
             debugLog('=== ログアウト開始 ===');
-            auth.signOut();
-        };
-
-        // 接続テスト
-        document.getElementById('test-btn').onclick = () => {
-            debugLog('=== 接続テスト開始 ===');
-            debugLog(`Firebase接続: ${firebase.apps.length > 0 ? '✅ 成功' : '❌ 失敗'}`);
-            debugLog(`Auth状態: ${auth.currentUser ? '✅ ログイン済み' : '❌ 未ログイン'}`);
-            debugLog(`プロジェクトID: ${firebaseConfig.projectId}`);
-            debugLog(`認証ドメイン: ${firebaseConfig.authDomain}`);
+            auth.signOut().then(() => {
+                debugLog('✅ ログアウト完了', 'success');
+            });
         };
 
         // Action Items取得
@@ -191,31 +695,78 @@
                         itemsDiv.innerHTML = html;
                     }
                 } else {
-                    debugLog(`❌ Action Items取得エラー: ${data.error}`, 'error');
+                    debugLog(`❌ Action Items取得エラー: ${data.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
                 debugLog(`❌ Action Items取得失敗: ${error.message}`, 'error');
             }
         }
 
-        // 認証状態の監視
-        auth.onAuthStateChanged((user) => {
-            debugLog('🔄 認証状態変更検出');
-            updateUI(user);
-        });
-
-        // ページ読み込み時
+        // ページ読み込み時の処理
         window.onload = function() {
-            debugLog('=== ページ読み込み完了 ===');
-            debugLog(`URL: ${window.location.href}`);
-            debugLog(`User Agent: ${navigator.userAgent}`);
+            debugLog('=== ページ読み込み完了 ===', 'success');
+            debugLog(`🌐 現在URL: ${window.location.href}`);
+            debugLog(`📄 リファラー: ${document.referrer || 'なし'}`);
+            debugLog(`🕐 読み込み時刻: ${new Date().toLocaleString()}`);
             
-            // 初期状態確認
+            // URLパラメータ確認
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.toString()) {
+                debugLog(`🔍 URLパラメータ: ${urlParams.toString()}`);
+            }
+
+            // ブラウザ情報
+            debugLog(`🌐 ブラウザ: ${navigator.userAgent.substring(0, 80)}...`);
+            debugLog(`🔐 セキュア接続: ${location.protocol === 'https:' ? 'はい' : 'いいえ'}`);
+
+            // リダイレクト認証の結果を確認
+            debugLog('=== リダイレクト認証結果確認開始 ===');
+            
+            auth.getRedirectResult()
+                .then((result) => {
+                    if (result && result.user) {
+                        debugLog('🎉 リダイレクト認証成功!', 'success');
+                        debugLog(`👤 認証ユーザー: ${result.user.email}`);
+                        debugLog(`🔗 認証プロバイダー: ${result.credential ? result.credential.providerId : 'Unknown'}`);
+                        debugLog(`🕐 認証時刻: ${new Date().toLocaleString()}`);
+                        
+                        // 自動的にDjango認証をテスト
+                        setTimeout(() => {
+                            testDjangoAuth();
+                        }, 1500);
+                        
+                    } else {
+                        debugLog('ℹ️ リダイレクト認証結果: 新規認証なし');
+                        
+                        // 既存のログイン状態を確認
+                        setTimeout(() => {
+                            checkCurrentUser();
+                        }, 1000);
+                    }
+                })
+                .catch((error) => {
+                    debugLog(`❌ リダイレクト認証エラー: ${error.code} - ${error.message}`, 'error');
+                    
+                    // 詳細なエラー分析
+                    if (error.code === 'auth/unauthorized-domain') {
+                        debugLog('💡 ヒント: Firebase Consoleで承認済みドメインを確認してください', 'warning');
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        debugLog('💡 ヒント: Firebase ConsoleでGoogle認証プロバイダーを有効にしてください', 'warning');
+                    }
+                });
+
+            // 認証状態変更の監視
+            auth.onAuthStateChanged((user) => {
+                debugLog('🔄 認証状態変更検出');
+                updateUI(user);
+            });
+
+            // 初期化完了後の設定確認
             setTimeout(() => {
-                debugLog('=== 初期状態確認 ===');
-                debugLog(`Firebase Apps: ${firebase.apps.length}`);
-                debugLog(`現在のユーザー: ${auth.currentUser ? auth.currentUser.email : 'なし'}`);
-            }, 1000);
+                debugLog('=== 初期化完了後の確認 ===');
+                checkAuthPersistence();
+                debugFirebaseState();
+            }, 2000);
         };
     </script>
 </body>

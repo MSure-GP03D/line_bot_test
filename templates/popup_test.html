@@ -1,0 +1,273 @@
+<!-- templates/popup_test.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ポップアップ接続テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        #result { border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-height: 400px; overflow-y: scroll; }
+        .log { margin: 5px 0; padding: 5px; background: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>🔍 ポップアップ接続確認テスト</h1>
+    
+    <p><strong>現在のURL:</strong> <span id="current-url"></span></p>
+    
+    <button onclick="testBasicJS()">1. JavaScript基本テスト</button>
+    <button onclick="testBasicPopup()">2. 基本ポップアップテスト</button>
+    <button onclick="testGooglePopup()">3. Google接続テスト</button>
+    <button onclick="testCrossOriginDetection()">4. クロスオリジン検証テスト</button>
+    <button onclick="testSameOriginPopup()">5. 同一オリジンテスト</button>
+
+    <div id="result">
+        <div class="log">テスト結果がここに表示されます...</div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const resultDiv = document.getElementById('result');
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log';
+            logDiv.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            logDiv.innerHTML = `[${timestamp}] ${message}`;
+            resultDiv.appendChild(logDiv);
+            resultDiv.scrollTop = resultDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // 1. JavaScript基本テスト
+        function testBasicJS() {
+            log('=== JavaScript基本テスト開始 ===');
+            
+            try {
+                log('✅ JavaScript実行中', 'success');
+                log(`現在URL: ${window.location.href}`);
+                log(`プロトコル: ${window.location.protocol}`);
+                log(`ブラウザ: ${navigator.userAgent.substring(0, 50)}...`);
+                
+                // アラート表示テスト
+                if (confirm('アラート表示テスト - OKを押してください')) {
+                    log('✅ アラート/confirm動作確認', 'success');
+                } else {
+                    log('❌ confirm がキャンセルされました', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ JavaScript基本エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 2. 基本ポップアップテスト
+        function testBasicPopup() {
+            log('=== 基本ポップアップテスト開始 ===');
+            
+            try {
+                log('ポップアップを開こうとしています...');
+                
+                const popup = window.open('about:blank', 'testPopup', 'width=400,height=300');
+                
+                if (popup) {
+                    log('✅ ポップアップ作成成功', 'success');
+                    
+                    // ポップアップに内容を書き込み
+                    popup.document.write(`
+                        <html>
+                        <head><title>テストポップアップ</title></head>
+                        <body>
+                            <h1>ポップアップテスト成功!</h1>
+                            <p>このポップアップが表示されていれば、基本的なポップアップ機能は動作しています。</p>
+                            <button onclick="window.close()">閉じる</button>
+                        </body>
+                        </html>
+                    `);
+                    
+                    // 5秒後に自動で閉じる
+                    setTimeout(() => {
+                        if (!popup.closed) {
+                            popup.close();
+                            log('5秒経過 - ポップアップを自動クローズ');
+                        }
+                    }, 5000);
+                    
+                    // ポップアップの状態監視
+                    const checkInterval = setInterval(() => {
+                        if (popup.closed) {
+                            log('✅ ポップアップが閉じられました', 'success');
+                            clearInterval(checkInterval);
+                        }
+                    }, 500);
+                    
+                } else {
+                    log('❌ ポップアップがブロックされました', 'error');
+                    log('💡 ブラウザのポップアップブロックを解除してください');
+                }
+            } catch (error) {
+                log(`❌ ポップアップエラー: ${error.message}`, 'error');
+            }
+        }
+
+        // 3. Google接続テスト
+        function testGooglePopup() {
+            log('=== Google接続テスト開始 ===');
+            
+            try {
+                log('Googleページのポップアップを開こうとしています...');
+                
+                const popup = window.open(
+                    'https://www.google.com', 
+                    'googleTest', 
+                    'width=600,height=500,scrollbars=yes,resizable=yes'
+                );
+                
+                if (popup) {
+                    log('✅ Googleポップアップ作成成功', 'success');
+                    
+                    let checkCount = 0;
+                    const maxChecks = 10;
+                    
+                    const checkInterval = setInterval(() => {
+                        checkCount++;
+                        
+                        if (popup.closed) {
+                            log('✅ Googleポップアップが閉じられました', 'success');
+                            clearInterval(checkInterval);
+                        } else if (checkCount >= maxChecks) {
+                            log(`${maxChecks}秒経過 - ポップアップを自動クローズ`);
+                            popup.close();
+                            clearInterval(checkInterval);
+                        } else {
+                            log(`Google接続確認中... (${checkCount}/${maxChecks})`);
+                        }
+                    }, 1000);
+                    
+                } else {
+                    log('❌ Googleポップアップがブロックされました', 'error');
+                    log('💡 ブラウザのポップアップブロックを解除してください');
+                }
+            } catch (error) {
+                log(`❌ Google接続エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // ページ読み込み時の初期化
+        window.onload = function() {
+            document.getElementById('current-url').textContent = window.location.href;
+            log('🚀 ページ読み込み完了 - テスト準備完了', 'success');
+            
+            // プロトコルチェック
+            if (window.location.protocol === 'file:') {
+                log('⚠️ 警告: file://プロトコルで開かれています', 'error');
+                log('💡 http://localhost:8000/ でアクセスしてください', 'error');
+            } else {
+                log('✅ HTTPプロトコルで正常にアクセスされています', 'success');
+            }
+        };
+        function testCrossOriginDetection() {
+        log('=== クロスオリジン検証テスト開始 ===');
+        
+        const popup = window.open('https://www.google.com', 'crossOriginTest', 'width=600,height=500');
+        
+        if (popup) {
+            log('✅ ポップアップ作成成功');
+            
+            let checkCount = 0;
+            const startTime = Date.now();
+            
+            const detailedCheck = setInterval(() => {
+                checkCount++;
+                const elapsed = Date.now() - startTime;
+                
+                try {
+                    // ポップアップの詳細状態確認
+                    const isClosed = popup.closed;
+                    const hasWindow = !!popup.window;
+                    
+                    log(`[${checkCount}] ${elapsed}ms経過:`);
+                    log(`  - popup.closed: ${isClosed}`);
+                    log(`  - popup.window: ${hasWindow}`);
+                    
+                    // URLアクセスを試行（エラーが出るのが正常）
+                    try {
+                        const url = popup.location.href;
+                        log(`  - popup.location.href: ${url}`);
+                    } catch (urlError) {
+                        log(`  - URL取得エラー: ${urlError.name} (これは正常)`);
+                    }
+                    
+                    // 実際に閉じられた場合
+                    if (isClosed) {
+                        log('🔴 ポップアップが実際に閉じられました', 'error');
+                        clearInterval(detailedCheck);
+                        return;
+                    }
+                    
+                    // 10秒後に強制終了
+                    if (checkCount >= 10) {
+                        log('⏰ 10秒経過 - テスト終了');
+                        log('💡 ポップアップは開いたままですが、通信状態を確認できました');
+                        popup.close();
+                        clearInterval(detailedCheck);
+                    }
+                    
+                } catch (error) {
+                    log(`❌ ポップアップ状態確認エラー: ${error.message}`, 'error');
+                    clearInterval(detailedCheck);
+                }
+            }, 1000);
+            
+        } else {
+            log('❌ ポップアップがブロックされました', 'error');
+        }
+    }
+
+    // 5. 同一オリジンテスト（比較用）
+    function testSameOriginPopup() {
+        log('=== 同一オリジンテスト開始 ===');
+        
+        // 同じドメインのページを開く
+        const popup = window.open('/hello/', 'sameOriginTest', 'width=400,height=300');
+        
+        if (popup) {
+            log('✅ 同一オリジンポップアップ作成成功');
+            
+            let checkCount = 0;
+            
+            const sameOriginCheck = setInterval(() => {
+                checkCount++;
+                
+                try {
+                    const isClosed = popup.closed;
+                    
+                    // 同一オリジンなのでURLも取得可能
+                    try {
+                        const url = popup.location.href;
+                        log(`[${checkCount}] popup.closed: ${isClosed}, URL: ${url}`);
+                    } catch (urlError) {
+                        log(`[${checkCount}] popup.closed: ${isClosed}, URL取得エラー: ${urlError.message}`);
+                    }
+                    
+                    if (isClosed) {
+                        log('✅ 同一オリジンポップアップが閉じられました', 'success');
+                        clearInterval(sameOriginCheck);
+                    } else if (checkCount >= 10) {
+                        log('⏰ 10秒経過 - 同一オリジンポップアップを閉じます');
+                        popup.close();
+                        clearInterval(sameOriginCheck);
+                    }
+                    
+                } catch (error) {
+                    log(`❌ 同一オリジン確認エラー: ${error.message}`, 'error');
+                    clearInterval(sameOriginCheck);
+                }
+            }, 1000);
+            
+        } else {
+            log('❌ 同一オリジンポップアップがブロックされました', 'error');
+        }
+    }
+    </script>
+</body>
+</html>
