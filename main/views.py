@@ -19,7 +19,7 @@ def index(request):
     return render(request, 'index.html')
 
 def hello(request):
-    return render(request, 'popup_test.html') 
+    return render(request, 'test.html') 
     # return HttpResponse("Hello World")
 
 @csrf_exempt

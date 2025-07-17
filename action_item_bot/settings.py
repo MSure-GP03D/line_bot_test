@@ -16,11 +16,23 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 開発環境用設定
+# settings.py の構成例
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+# COOP設定を緩和
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-h5_8f2o!g1r_g0uk4op3yf5_1t5=rtcz+7lsb(l2fw__vdhebz"
 
@@ -117,11 +129,6 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = "static/"
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -141,6 +148,7 @@ INSTALLED_APPS = [
 import os
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
 key_file = r"C:\Users\ohson\Desktop\practice\clsude_test\App_1\App_2\action_item_bot\fir-test-87458-firebase-adminsdk-fbsvc-e96539fc91.json"
 
 # Firebase設定
